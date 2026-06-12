@@ -1,0 +1,743 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AG Fee インセン 予実ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#181818;--bg2:#1e1e1e;--bg3:#252525;--bg4:#2d2d2d;
+  --text:#e4e4e4;--text2:#a0a0a0;--text3:#555;
+  --border:#2e2e2e;--accent:#599CE7;
+  --green-text:#4dbf8c;--yellow-text:#e0b040;--red-text:#e07070;
+  --gbg:rgba(31,138,101,.14);--ybg:rgba(184,144,10,.14);--rbg:rgba(184,48,48,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;line-height:1.6}
+.page{max-width:1160px;margin:0 auto;padding:20px}
+h2{font-size:13px;font-weight:600;margin:16px 0 6px}
+h3{font-size:12px;font-weight:600;color:var(--text2);margin:0 0 5px}
+.sub{font-size:11px;color:var(--text2)}
+.dim{color:var(--text2)}
+
+/* Header */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+h1{font-size:18px;font-weight:600}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+.badge{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);color:var(--text2);display:inline-block}
+.badge-info{border-color:#3a6fa8;color:#80b4e8;background:rgba(89,156,231,.1)}
+.badge-warn{border-color:#8a6200;color:var(--yellow-text);background:var(--ybg)}
+
+/* Q selector */
+.q-row{display:flex;gap:6px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.q-lbl{font-size:11px;color:var(--text2)}
+.qbtn{padding:4px 14px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:12px}
+.qbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.qbtn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Pills */
+.pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500}
+.pg{background:var(--gbg);color:var(--green-text);border:1px solid rgba(77,191,140,.25)}
+.py{background:var(--ybg);color:var(--yellow-text);border:1px solid rgba(224,176,64,.25)}
+.pr{background:var(--rbg);color:var(--red-text);border:1px solid rgba(224,112,112,.25)}
+.pb{background:rgba(89,156,231,.12);color:#80b4e8;border:1px solid rgba(89,156,231,.25)}
+.pgr{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+
+/* Tabs */
+.m-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border);margin-bottom:18px;scrollbar-width:none}
+.m-tabs::-webkit-scrollbar{display:none}
+.mtab{padding:7px 16px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;flex-shrink:0}
+.mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.mtab.summary-tab{font-weight:600}
+
+/* KPI grid */
+.kpis{display:grid;gap:10px;margin-bottom:14px}
+.k4{grid-template-columns:repeat(4,1fr)}
+.k3{grid-template-columns:repeat(3,1fr)}
+.k2{grid-template-columns:repeat(2,1fr)}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 13px}
+.kval{font-size:17px;font-weight:600}
+.klbl{font-size:10px;color:var(--text2);margin-top:2px}
+.green{color:var(--green-text)}
+.yellow{color:var(--yellow-text)}
+.red{color:var(--red-text)}
+
+/* Health bar card */
+.hcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.hrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.bar-bg{height:8px;background:var(--bg3);border-radius:4px;position:relative;overflow:visible;margin-bottom:3px}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.bar-mark{position:absolute;top:-4px;width:2px;height:16px;background:var(--text3);border-radius:1px}
+.bar-lbls{display:flex;justify-content:space-between;font-size:10px;color:var(--text2)}
+
+/* Summary grid */
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:16px}
+.sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .15s}
+.sum-card:hover{border-color:var(--accent)}
+.sc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:6px}
+.sc-title{font-size:12px;font-weight:600}
+.sc-team{font-size:10px;color:var(--text2);margin-top:1px}
+.sc-nums{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}
+.sc-num{font-size:10px;color:var(--text2)}
+.sc-num b{display:block;font-size:13px;font-weight:600;color:var(--text)}
+.sc-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.sc-bar-fill{height:100%;border-radius:3px}
+
+/* Sub-item table/cards */
+.items-table{width:100%;border-collapse:collapse}
+.items-table th{background:var(--bg3);color:var(--text2);font-size:10px;font-weight:500;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.items-table td{padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.items-table tr:last-child td{border-bottom:none}
+.tbl-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+
+/* Progress bar inline */
+.ibar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle}
+.ibar-fill{height:100%;border-radius:3px}
+
+/* Agency section */
+.ag-section{margin-top:14px}
+.charts-2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.cc{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:13px}
+.ag-tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px}
+table.ag{width:100%;border-collapse:collapse;min-width:520px}
+table.ag th{background:var(--bg3);color:var(--text2);font-size:10px;font-weight:500;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+table.ag td{padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;vertical-align:middle;white-space:nowrap}
+table.ag tr:last-child td{border-bottom:none}
+table.ag tr.rr td{background:rgba(184,48,48,.06)}
+table.ag tr.ry td{background:rgba(184,144,10,.06)}
+
+/* Filter bar */
+.fbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.fbtn{padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:11px}
+.fbtn.active{background:var(--bg3);color:var(--text);border-color:var(--text3)}
+
+/* Callout */
+.callout{padding:9px 13px;border-radius:6px;font-size:11px;margin-bottom:12px}
+.ci{background:rgba(89,156,231,.1);border:1px solid rgba(89,156,231,.3);color:#80b4e8}
+.cw{background:var(--ybg);border:1px solid rgba(184,144,10,.35);color:var(--yellow-text)}
+
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px}
+hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+@media(max-width:680px){
+  .k4,.k3{grid-template-columns:repeat(2,1fr)}
+  .charts-2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="ph">
+  <div>
+    <h1>AG Fee インセン 予実ダッシュボード</h1>
+    <div class="badges">
+      <span class="badge badge-info">FY26Q1 — 10週時点（経過 72.5% / 66日）</span>
+      <span class="badge badge-warn">⚠ データは手動更新。最新化はシート再取得が必要</span>
+    </div>
+  </div>
+</div>
+<p class="sub" style="margin-bottom:14px">
+  予算: <a href="https://docs.google.com/spreadsheets/d/1E_AtlFR0nvQaDlVJmb-EOirIhAoAXXiQqp_kUzGvg58/edit#gid=1760603195" target="_blank" style="color:var(--accent)">FY26_Agency Commission管理「予算_インセン・支援」</a> ／
+  実績: <a href="https://docs.google.com/spreadsheets/d/1loLGambQMp26OcRbF1hz3lPGDu53lo6SJ3caMdqk36Q/edit#gid=1176742065" target="_blank" style="color:var(--accent)">FMT26Q1_各種インセン進捗</a>
+</p>
+
+<!-- Q period selector -->
+<div class="q-row">
+  <span class="q-lbl">期間:</span>
+  <button class="qbtn active">Q1（4〜6月）</button>
+  <button class="qbtn" disabled>Q2（準備中）</button>
+  <button class="qbtn" disabled>Q3（準備中）</button>
+  <button class="qbtn" disabled>Q4（準備中）</button>
+</div>
+
+<!-- Category tabs -->
+<div class="m-tabs" id="catTabs"></div>
+
+<!-- Tab panels -->
+<div id="panel-summary"></div>
+<div id="panel-gyoseki_mc" style="display:none"></div>
+<div id="panel-kojin_mc"   style="display:none"></div>
+<div id="panel-gyoseki_ng" style="display:none"></div>
+<div id="panel-shien"      style="display:none"></div>
+<div id="panel-bnp"        style="display:none"></div>
+<div id="panel-wb"         style="display:none"></div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// FORMATTERS
+// ═══════════════════════════════════════════════════════════
+function jpy(n, sign){
+  if(n === null || n === undefined) return '—';
+  const s = sign && n > 0 ? '+' : (sign && n < 0 ? '' : '');
+  const a = Math.abs(n);
+  if(a >= 1e8)  return s + (n/1e8).toFixed(2) + '億円';
+  if(a >= 1e7)  return s + (n/1e7).toFixed(2) + '千万円';
+  if(a >= 1e4)  return s + Math.round(n/1e4) + '万円';
+  return s + '¥' + Math.round(n).toLocaleString();
+}
+function pct(n){ return n === null ? '—' : n.toFixed(1) + '%'; }
+function ratio(est, bud){ return (est !== null && bud) ? est/bud : null; }
+function hcls(r){ return r === null ? 'pgr' : r > 1 ? 'pr' : r > 0.9 ? 'py' : 'pg'; }
+function hlbl(r){ return r === null ? '—' : r > 1 ? '超過' : r > 0.9 ? '注意' : '予算内'; }
+function hclr(r){ return r === null ? '' : r > 1 ? 'red' : r > 0.9 ? 'yellow' : 'green'; }
+function barColor(r){ return r === null ? '#555' : r > 1 ? '#B83030' : r > 0.9 ? '#B8900A' : '#1F8A65'; }
+
+// ═══════════════════════════════════════════════════════════
+// MASTER DATA
+// ═══════════════════════════════════════════════════════════
+
+// ── 全カテゴリ定義 ────────────────────────────────────────
+const CATEGORIES = [
+  {
+    id: 'gyoseki_mc', name: '業績インセン\n（Mid_Career）', nameShort: '業績インセン（MC）', team: 'PO',
+    items: [
+      { id:'gyoseki', name:'業績（戦略推進）インセン_業績',    budget:399_000_000, estimate:425_825_752,
+        note:'通常業績インセン。AG ALL売上×段階別率（0.3〜3.0%）', source:'FMT26Q1進捗 10w', hasAgency:true, agType:'gyoseki' },
+      { id:'addon',   name:'FY25Q4新規アドオンインセン（Q跨ぎ）', budget:80_000_000, estimate:80_000_000,
+        note:'Q跨ぎ分。4月¥5千万・5月¥2千万・6月¥1千万', source:'PAM確定（予算=見立て）', hasAgency:false },
+      { id:'kado',    name:'業績（戦略推進）インセン_社数',    budget:80_000_000, estimate:81_500_000,
+        note:'稼働アカウント数目標達成で固定額支払い', source:'FMT26Q1進捗B-Sheet 9w', hasAgency:false },
+    ]
+  },
+  {
+    id: 'kojin_mc', name: '個社インセン\n（Mid_Career）', nameShort: '個社インセン（MC）', team: 'PO',
+    items: [
+      { id:'spp',      name:'SP/PP Prj業績インセン',         budget:100_000_000, estimate:26_106_476,
+        note:'SP(¥5.4億)+PP(¥10.6億)×3〜10%', source:'FMT26Q1進捗 10w', hasAgency:true, agType:'spp' },
+      { id:'precious', name:'プレシャスパートナーズ',           budget:32_000_000,  estimate:16_107_561,
+        note:'3段階(4/5/6%)。着地¥2.68億→段階3達成(116.4%)', source:'FMT26Q1進捗 10w', hasAgency:false },
+      { id:'dym',      name:'DYM',                           budget:110_000_000, estimate:123_477_889,
+        note:'超過額×50%型。着地¥9.98億→目標¥7.51億超過(132.9%)', source:'FMT26Q1進捗 10w', hasAgency:false },
+      { id:'prd',      name:'ピーアールデイリー',              budget:10_000_000,  estimate:1_774_964,
+        note:'件数従量型(5万円以上費消アカウント数×¥5千)', source:'FMT26Q1進捗 10w', hasAgency:false },
+    ]
+  },
+  {
+    id: 'gyoseki_ng', name: '業績インセン\n（New_Grad）', nameShort: '業績インセン（NG）', team: 'NG',
+    items: [
+      { id:'gib',     name:'社数GIB',  budget:21_000_000, estimate:null,
+        note:'28IS&C有料広告配信社数キャンペーン（GIB型）', source:'別シート要確認' },
+      { id:'kazuryo', name:'社数従量', budget:39_000_000, estimate:null,
+        note:'28IS&C有料広告配信社数キャンペーン（従量型）', source:'別シート要確認' },
+    ]
+  },
+  {
+    id: 'shien', name: '支援金', nameShort: '支援金', team: 'PAM',
+    items: [
+      { id:'hoshin',  name:'総量率差額補填_支払い',    budget:135_000_000, estimate:135_000_000,
+        note:'旧RCL代理店向け補填支払い', source:'PAM確定' },
+      { id:'jitsuhi', name:'経理実費支援',             budget:90_000_000,  estimate:90_000_000,
+        note:'旧RCL代理店向け実費支援', source:'PAM確定' },
+      { id:'haken',   name:'出向支援金（予実管理外）', budget:34_000_000,  estimate:34_000_000,
+        note:'予実管理外。出向者支援', source:'PAM確定' },
+    ]
+  },
+  {
+    id: 'bnp', name: 'BNP', nameShort: 'BNP', team: 'PAM',
+    items: [
+      { id:'bnp', name:'BNP', budget:548_000_000, estimate:548_000_000,
+        note:'FRD90日×付与率（Pt50/Au45/Ag+40/Ag20%）', source:'PAM計算値（予算=見立て）' }
+    ]
+  },
+  {
+    id: 'wb', name: 'WB', nameShort: 'WB', team: 'PAM',
+    items: [
+      { id:'wb', name:'WB', budget:162_000_000, estimate:162_000_000,
+        note:'FRD or 再開日90日×付与率（同上）', source:'PAM計算値（予算=見立て）' }
+    ]
+  },
+];
+
+// ── 業績インセン（通常）代理店データ 10w ─────────────────
+const GYOSEKI_AG = [
+  {name:'イングHD',              cat:'ACCDE', lr:100.9, stage:'段階1', rl:'0.3%', inc:3_193_982,  ytoy:105.4, qtoq:94.2},
+  {name:'クレドHD',              cat:'ACCDE', lr:103.8, stage:'段階2', rl:'1.0%', inc:3_625_353,  ytoy:126.5, qtoq:94.3},
+  {name:'KRS',                   cat:'ACCDE', lr:98.4,  stage:'未達',  rl:'—',   inc:0,           ytoy:107.4, qtoq:82.4},
+  {name:'R4',                    cat:'ACCDE', lr:98.5,  stage:'未達',  rl:'—',   inc:0,           ytoy:119.7, qtoq:85.1},
+  {name:'RSHD',                  cat:'ACCDE', lr:99.7,  stage:'未達',  rl:'—',   inc:0,           ytoy:117.4, qtoq:92.2},
+  {name:'SRC',                   cat:'ACCDE', lr:105.4, stage:'段階2', rl:'1.0%', inc:9_246_274,  ytoy:131.0, qtoq:94.2},
+  {name:'アイ・コーポレーション', cat:'ACCDE', lr:102.9, stage:'段階1', rl:'0.3%', inc:4_671_288,  ytoy:119.8, qtoq:95.2},
+  {name:'アド・イーグルHD',       cat:'ACCDE', lr:116.4, stage:'段階3', rl:'3.0%', inc:14_901_531, ytoy:125.0, qtoq:94.8},
+  {name:'アドプランナーHD',       cat:'ACCDE', lr:100.5, stage:'段階1', rl:'0.3%', inc:3_196_252,  ytoy:112.4, qtoq:89.9},
+  {name:'インテリジェンスOF',     cat:'ACCDE', lr:112.1, stage:'段階2', rl:'1.0%', inc:2_902_686,  ytoy:113.3, qtoq:99.0},
+  {name:'クイック',               cat:'ACCDE', lr:108.5, stage:'段階2', rl:'1.0%', inc:20_615_524, ytoy:127.6, qtoq:94.6},
+  {name:'シグナルHD',             cat:'ACCDE', lr:109.3, stage:'段階2', rl:'1.0%', inc:5_694_675,  ytoy:106.0, qtoq:98.8},
+  {name:'トーコン',               cat:'ACCDE', lr:126.0, stage:'段階3', rl:'2.0%', inc:17_973_924, ytoy:130.3, qtoq:101.1},
+  {name:'ヒューマンワーク',        cat:'ACCDE', lr:99.8,  stage:'未達',  rl:'—',   inc:0,           ytoy:102.0, qtoq:91.2},
+  {name:'プライムサーヴ',          cat:'ACCDE', lr:104.1, stage:'段階2', rl:'1.0%', inc:6_097_394,  ytoy:123.6, qtoq:96.6},
+  {name:'メディアハウスHD',        cat:'ACCDE', lr:114.9, stage:'段階3', rl:'3.0%', inc:36_185_218, ytoy:121.4, qtoq:103.3},
+  {name:'リクルーティング・デザイン',cat:'ACCDE',lr:104.4, stage:'段階2', rl:'1.0%', inc:7_783_895,  ytoy:120.9, qtoq:95.3},
+  {name:'求人センター',            cat:'ACCDE', lr:106.9, stage:'段階2', rl:'1.0%', inc:3_788_335,  ytoy:92.3,  qtoq:92.4},
+  {name:'人材総合サービス',        cat:'ACCDE', lr:110.4, stage:'段階2', rl:'1.0%', inc:1_957_648,  ytoy:151.6, qtoq:90.6},
+  {name:'人財企画',               cat:'ACCDE', lr:92.0,  stage:'未達',  rl:'—',   inc:0,           ytoy:97.0,  qtoq:85.7},
+  {name:'トラコム',               cat:'GRO',   lr:101.8, stage:'段階1', rl:'0.3%', inc:2_692_159,  ytoy:119.2, qtoq:93.7},
+  {name:'アクシア',               cat:'GRO',   lr:110.1, stage:'段階2', rl:'1.0%', inc:5_479_494,  ytoy:133.2, qtoq:99.3},
+  {name:'アドバHD',               cat:'GRO',   lr:98.0,  stage:'未達',  rl:'—',   inc:0,           ytoy:104.4, qtoq:87.9},
+  {name:'ウインウイン',            cat:'GRO',   lr:97.8,  stage:'未達',  rl:'—',   inc:0,           ytoy:112.2, qtoq:91.4},
+  {name:'タグHD',                 cat:'GRO',   lr:106.3, stage:'段階2', rl:'1.0%', inc:5_210_691,  ytoy:119.6, qtoq:92.5},
+  {name:'ノーザンライツ',          cat:'GRO',   lr:114.9, stage:'段階3', rl:'3.0%', inc:14_416_802, ytoy:139.5, qtoq:104.0},
+  {name:'フロム・エージャパン',    cat:'GRO',   lr:117.5, stage:'段階3', rl:'3.0%', inc:21_379_346, ytoy:112.0, qtoq:103.1},
+  {name:'ベストマッチ',            cat:'GRO',   lr:95.6,  stage:'未達',  rl:'—',   inc:0,           ytoy:122.6, qtoq:89.0},
+  {name:'一広グループHD',          cat:'GRO',   lr:112.9, stage:'段階3', rl:'3.0%', inc:13_180_622, ytoy:153.4, qtoq:100.0},
+  {name:'太陽企画',               cat:'GRO',   lr:111.1, stage:'段階2', rl:'1.5%', inc:9_583_963,  ytoy:121.6, qtoq:99.4},
+  {name:'飛竜企画',               cat:'GRO',   lr:121.0, stage:'段階3', rl:'3.0%', inc:14_901_286, ytoy:146.8, qtoq:96.9},
+  {name:'リクルーティング・パートナーズ',cat:'GRO',lr:115.0,stage:'段階3',rl:'3.0%',inc:7_353_480,  ytoy:138.9, qtoq:104.8},
+  {name:'アイデム',               cat:'STR',   lr:102.2, stage:'段階1', rl:'0.5%', inc:6_633_563,  ytoy:109.1, qtoq:94.6},
+  {name:'アスコム',               cat:'STR',   lr:102.1, stage:'段階1', rl:'0.5%', inc:2_743_678,  ytoy:123.6, qtoq:91.4},
+];
+
+// ── SP/PP代理店 10w ─────────────────────────────────────
+const SPP_AG = [
+  {name:'パーソルBPD',          cat:'STR', type:'SP', lr:95.9,  stage:'未達',  rl:'—',   inc:0},
+  {name:'あつまるHD',           cat:'STR', type:'SP', lr:115.0, stage:'段階2', rl:'4.0%',inc:897_289},
+  {name:'アルバイトタイムス',   cat:'STR', type:'SP', lr:91.6,  stage:'未達',  rl:'—',   inc:0},
+  {name:'求人おきなわ',         cat:'STR', type:'SP', lr:117.9, stage:'段階2', rl:'4.0%',inc:847_673},
+  {name:'大新社',               cat:'STR', type:'SP', lr:92.0,  stage:'未達',  rl:'—',   inc:0},
+  {name:'ピーエイ',             cat:'STR', type:'SP', lr:91.8,  stage:'未達',  rl:'—',   inc:0},
+  {name:'中広',                 cat:'STR', type:'SP', lr:91.6,  stage:'未達',  rl:'—',   inc:0},
+  {name:'bサーチ',              cat:'GRO', type:'PP', lr:104.2, stage:'段階1', rl:'3.0%',inc:5_995_867},
+  {name:'トレンドイノベーション',cat:'STR', type:'PP', lr:86.0,  stage:'未達',  rl:'—',   inc:0},
+  {name:'パック・エックス',      cat:'STR', type:'PP', lr:126.0, stage:'段階3', rl:'5.0%',inc:3_924_905},
+  {name:'ジェイ・ライン',        cat:'STR', type:'PP', lr:123.3, stage:'段階3', rl:'5.0%',inc:2_764_467},
+  {name:'オンタイムデリバリーJP',cat:'GRO', type:'PP', lr:89.2,  stage:'未達',  rl:'—',   inc:0},
+  {name:'グラハム',             cat:'STR', type:'PP', lr:94.3,  stage:'未達',  rl:'—',   inc:0},
+  {name:'EISHIN',               cat:'STR', type:'PP', lr:102.5, stage:'段階1', rl:'3.0%',inc:4_720_879},
+  {name:'エイム',               cat:'STR', type:'PP', lr:94.6,  stage:'未達',  rl:'—',   inc:0},
+  {name:'新宝島HD',             cat:'STR', type:'PP', lr:90.0,  stage:'未達',  rl:'—',   inc:0},
+  {name:'セントラル・デイリー', cat:'STR', type:'PP', lr:81.4,  stage:'未達',  rl:'—',   inc:0},
+  {name:'デイリー・インフォ関西',cat:'STR', type:'PP', lr:84.7,  stage:'未達',  rl:'—',   inc:0},
+  {name:'フォロアス',           cat:'STR', type:'PP', lr:123.0, stage:'段階3', rl:'5.0%',inc:5_069_161},
+  {name:'リブインサイト',        cat:'STR', type:'PP', lr:91.6,  stage:'未達',  rl:'—',   inc:0},
+  {name:'ヴァンテージポイント',  cat:'STR', type:'PP', lr:110.4, stage:'段階2', rl:'4.0%',inc:1_344_627},
+  {name:'クラウドキャリア',      cat:'STR', type:'PP', lr:103.4, stage:'段階1', rl:'3.0%',inc:541_610},
+];
+
+// ═══════════════════════════════════════════════════════════
+// COMPUTED TOTALS
+// ═══════════════════════════════════════════════════════════
+function catTotal(cat) {
+  return {
+    budget:   cat.items.reduce((s,x) => s + (x.budget||0), 0),
+    estimate: cat.items.every(x => x.estimate === null) ? null
+              : cat.items.reduce((s,x) => s + (x.estimate||0), 0)
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHARED RENDERERS
+// ═══════════════════════════════════════════════════════════
+function stagePill(s){
+  const m = {'未達':'pr','段階1':'pb','段階2':'pb','段階3':'pg'};
+  return '<span class="pill ' + (m[s]||'pgr') + (s==='段階1'?' style="opacity:.75"':'') + '">' + s + '</span>';
+}
+
+function renderHCard(label, budget, estimate, note, container) {
+  const r = ratio(estimate, budget);
+  const fc = barColor(r);
+  const max = Math.max(budget, estimate||0) * 1.12;
+  const bfill = estimate !== null ? Math.min(estimate/max*100, 100) : 0;
+  const bmark = Math.min(budget/max*100, 100);
+  const surplus = estimate !== null ? budget - estimate : null;
+  const surplusLabel = surplus !== null ? (surplus < 0 ? '予算超過' : '予算余り') : '—';
+  container.innerHTML =
+    '<div class="hcard">' +
+      '<div class="hrow">' +
+        '<span style="font-weight:600;font-size:12px">' + label + '</span>' +
+        '<span class="pill ' + hcls(r) + '">' + hlbl(r) + '</span>' +
+        '<span class="dim" style="font-size:11px;margin-left:auto">' + (note||'') + '</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 10px">' +
+        '<div><div class="sub">Q1予算</div><div style="font-size:16px;font-weight:600">' + jpy(budget) + '</div></div>' +
+        '<div><div class="sub">Q1見立て</div><div style="font-size:16px;font-weight:600;color:' + (r!==null?'var(--'+hclr(r)+'-text)':'var(--text2)') + '">' + jpy(estimate) + '</div></div>' +
+        '<div><div class="sub">予算比</div><div style="font-size:16px;font-weight:600;color:' + (r!==null?'var(--'+hclr(r)+'-text)':'var(--text2)') + '">' + (r!==null?pct(r*100):'—') + '</div></div>' +
+        '<div><div class="sub">' + surplusLabel + '</div><div style="font-size:16px;font-weight:600;color:' + (surplus!==null&&surplus<0?'var(--red-text)':'var(--green-text)') + '">' + (surplus!==null?jpy(Math.abs(surplus)):'—') + '</div></div>' +
+      '</div>' +
+      '<div class="bar-bg">' +
+        '<div class="bar-fill" style="width:' + bfill + '%;background:' + fc + '"></div>' +
+        '<div class="bar-mark" style="left:' + bmark + '%"></div>' +
+      '</div>' +
+      '<div class="bar-lbls"><span>▲予算 ' + jpy(budget) + '</span><span>' + (r!==null?pct(r*100):'') + '</span></div>' +
+    '</div>';
+}
+
+function tierCounts(ags){
+  return ['未達','段階1','段階2','段階3'].map(s => ags.filter(a => a.stage===s).length);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: 全体サマリー
+// ═══════════════════════════════════════════════════════════
+function buildSummary(){
+  const allBudget = CATEGORIES.reduce((s,c) => s + catTotal(c).budget, 0);
+  const knownEst  = CATEGORIES.reduce((s,c) => { const t=catTotal(c); return t.estimate!==null?s+t.estimate:s; }, 0);
+  const knownBud  = CATEGORIES.reduce((s,c) => { const t=catTotal(c); return t.estimate!==null?s+catTotal(c).budget:s; }, 0);
+  const r = knownEst / knownBud;
+
+  const cards = CATEGORIES.map(function(cat){
+    const t = catTotal(cat);
+    const cr = ratio(t.estimate, t.budget);
+    const fc = barColor(cr);
+    const fill = cr !== null ? Math.min(cr*100, 100) : 0;
+    return '<div class="sum-card" onclick="switchCat(\'' + cat.id + '\')">' +
+      '<div class="sc-head">' +
+        '<div><div class="sc-title">' + cat.nameShort + '</div><div class="sc-team">' + cat.team + '</div></div>' +
+        '<span class="pill ' + hcls(cr) + '">' + hlbl(cr) + '</span>' +
+      '</div>' +
+      '<div class="sc-nums">' +
+        '<div class="sc-num"><b>' + jpy(t.budget) + '</b>予算</div>' +
+        '<div class="sc-num"><b style="color:' + (cr!==null?'var(--'+hclr(cr)+'-text)':'var(--text2)') + '">' + jpy(t.estimate) + '</b>見立て</div>' +
+      '</div>' +
+      (cr!==null ? '<div class="sub" style="margin-bottom:3px">予算比 ' + pct(cr*100) + '</div>' :
+                   '<div class="sub" style="color:var(--text3);margin-bottom:3px">見立て未取得</div>') +
+      '<div class="sc-bar"><div class="sc-bar-fill" style="width:' + fill + '%;background:' + fc + '"></div></div>' +
+      '<div class="sub" style="margin-top:4px">' + cat.items.length + '項目</div>' +
+    '</div>';
+  }).join('');
+
+  const allItemsRows = CATEGORIES.map(function(cat){
+    return cat.items.map(function(item){
+      const r2 = ratio(item.estimate, item.budget);
+      const fill2 = r2 !== null ? Math.min(r2*100, 100) : 0;
+      const fc2 = barColor(r2);
+      return '<tr>' +
+        '<td><span class="pill pgr" style="font-size:10px">' + cat.nameShort + '</span></td>' +
+        '<td style="font-weight:500">' + item.name + '</td>' +
+        '<td><span class="pill pgr" style="font-size:10px">' + cat.team + '</span></td>' +
+        '<td style="text-align:right">' + jpy(item.budget) + '</td>' +
+        '<td style="text-align:right;color:' + (r2!==null?'var(--'+hclr(r2)+'-text)':'var(--text2)') + ';font-weight:600">' + jpy(item.estimate) + '</td>' +
+        '<td style="text-align:right"><span class="pill ' + hcls(r2) + '">' + (r2!==null?pct(r2*100):'—') + '</span></td>' +
+        '<td><div class="ibar"><div class="ibar-fill" style="width:' + fill2 + '%;background:' + fc2 + '"></div></div></td>' +
+        '<td class="dim" style="font-size:10px">' + (item.source||'') + '</td>' +
+      '</tr>';
+    }).join('');
+  }).join('');
+
+  document.getElementById('panel-summary').innerHTML =
+    '<div class="kpis k4" style="margin-bottom:14px">' +
+      '<div class="kpi"><div class="kval">' + jpy(allBudget) + '</div><div class="klbl">Q1 全体予算合計</div></div>' +
+      '<div class="kpi"><div class="kval ' + hclr(r) + '">' + jpy(knownEst) + '</div><div class="klbl">Q1 見立て合計（判明分）</div></div>' +
+      '<div class="kpi"><div class="kval ' + hclr(r) + '">' + pct(r*100) + '</div><div class="klbl">予算比（見立て判明分のみ）</div></div>' +
+      '<div class="kpi"><div class="kval dim">6カテゴリ / ' + CATEGORIES.reduce((s,c)=>s+c.items.length,0) + '項目</div><div class="klbl">構成</div></div>' +
+    '</div>' +
+    '<div class="callout ci">カードをクリックすると各カテゴリ詳細へジャンプ。業績インセン（NG）のGIB・従量はQ1見立て未取得（別シート要確認）。</div>' +
+    '<span class="sec-lbl">カテゴリ別サマリー</span>' +
+    '<div class="sum-grid">' + cards + '</div>' +
+    '<span class="sec-lbl">全項目一覧</span>' +
+    '<div class="tbl-wrap"><table class="items-table">' +
+      '<thead><tr><th>カテゴリ</th><th>項目名</th><th>Team</th><th>Q1予算</th><th>Q1見立て</th><th>予算比</th><th>進捗</th><th>データソース</th></tr></thead>' +
+      '<tbody>' + allItemsRows + '</tbody>' +
+    '</table></div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: 業績インセン（MC）
+// ═══════════════════════════════════════════════════════════
+let _gyoCharts = {};
+function buildGyosekiMC(){
+  const cat = CATEGORIES.find(c => c.id === 'gyoseki_mc');
+  const t = catTotal(cat);
+  const el = document.getElementById('panel-gyoseki_mc');
+
+  const itemRows = cat.items.map(function(item){
+    const r2 = ratio(item.estimate, item.budget);
+    return '<tr class="' + (r2!==null&&r2>1?'rr':'') + '">' +
+      '<td style="font-weight:500">' + item.name + '</td>' +
+      '<td style="text-align:right">' + jpy(item.budget) + '</td>' +
+      '<td style="text-align:right;color:' + (r2!==null?'var(--'+hclr(r2)+'-text)':'var(--text2)') + ';font-weight:600">' + jpy(item.estimate) + '</td>' +
+      '<td><span class="pill ' + hcls(r2) + '">' + (r2!==null?pct(r2*100):'—') + '</span></td>' +
+      '<td class="dim">' + item.note + '</td>' +
+      '<td class="dim" style="font-size:10px">' + item.source + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const tc = tierCounts(GYOSEKI_AG);
+  const miss  = GYOSEKI_AG.filter(a => a.stage==='未達').sort((a,b) => a.lr-b.lr);
+  const top3  = GYOSEKI_AG.filter(a => a.stage==='段階3').sort((a,b) => b.inc-a.inc);
+
+  el.innerHTML =
+    '<div id="gyoseki-hcard"></div>' +
+    '<div class="tbl-wrap"><table class="items-table">' +
+      '<thead><tr><th>項目</th><th>予算</th><th>見立て</th><th>予算比</th><th>概要</th><th>ソース</th></tr></thead>' +
+      '<tbody>' + itemRows + '</tbody>' +
+    '</table></div>' +
+    '<hr class="div">' +
+    '<span class="sec-lbl">▸ 業績（戦略推進）インセン_業績 — 代理店詳細（34社）</span>' +
+    '<div class="charts-2">' +
+      '<div class="cc"><h3>達成Bar分布（34社）</h3><canvas id="gyo-tierChart" height="145"></canvas></div>' +
+      '<div class="cc">' +
+        '<h3 style="margin-bottom:6px">未達代理店（段階1未達 → インセンなし）</h3>' +
+        '<ul style="list-style:none;font-size:11px;color:var(--text2)">' +
+          miss.map(a =>
+            '<li style="padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">' +
+              '<span>' + a.name + ' <span class="pill pgr" style="font-size:10px">' + a.cat + '</span></span>' +
+              '<span class="pill ' + (a.ytoy<100?'pr':'py') + '" style="font-size:10px">目標比 ' + pct(a.lr) + ' / YoY ' + pct(a.ytoy) + '</span>' +
+            '</li>'
+          ).join('') +
+        '</ul>' +
+        '<h3 style="margin-top:10px;margin-bottom:6px">段階3超達成代理店 Top</h3>' +
+        '<ul style="list-style:none;font-size:11px;color:var(--text2)">' +
+          top3.slice(0,5).map(a =>
+            '<li style="padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">' +
+              '<span>' + a.name + ' <span class="pill pgr" style="font-size:10px">' + a.cat + '</span></span>' +
+              '<span style="color:var(--green-text)">' + pct(a.lr) + ' → ' + jpy(a.inc) + '</span>' +
+            '</li>'
+          ).join('') +
+        '</ul>' +
+      '</div>' +
+    '</div>' +
+    '<div class="fbar">' +
+      '<span class="dim">フィルター:</span>' +
+      '<button class="fbtn active" onclick="gyoFilter(\'all\',this)">全て</button>' +
+      '<button class="fbtn" onclick="gyoFilter(\'miss\',this)">未達</button>' +
+      '<button class="fbtn" onclick="gyoFilter(\'top\',this)">段階3</button>' +
+      '<span class="dim" style="margin-left:auto">Cat:</span>' +
+      '<button class="fbtn active" onclick="gyoCat(\'all\',this)">ALL</button>' +
+      '<button class="fbtn" onclick="gyoCat(\'ACCDE\',this)">ACCDE</button>' +
+      '<button class="fbtn" onclick="gyoCat(\'GRO\',this)">GRO</button>' +
+      '<button class="fbtn" onclick="gyoCat(\'STR\',this)">STR</button>' +
+    '</div>' +
+    '<div class="ag-tbl-wrap"><table class="ag">' +
+      '<thead><tr><th>代理店名</th><th>Cat</th><th>目標比</th><th>達成Bar</th><th>率</th><th>支給見立て</th><th onclick="gyoSort(\'ytoy\')" style="cursor:pointer">YoY ▲▼</th><th onclick="gyoSort(\'qtoq\')" style="cursor:pointer">QoQ ▲▼</th></tr></thead>' +
+      '<tbody id="gyo-tbody"></tbody>' +
+    '</table></div>' +
+    '<div class="cc"><h3>支給見立て額 上位15社</h3><canvas id="gyo-agBar" height="130"></canvas></div>';
+
+  renderHCard(cat.nameShort, t.budget, t.estimate, 'PO管理', document.getElementById('gyoseki-hcard'));
+
+  if(_gyoCharts.tier) _gyoCharts.tier.destroy();
+  _gyoCharts.tier = new Chart(document.getElementById('gyo-tierChart').getContext('2d'), {
+    type:'doughnut', data:{labels:['未達','段階1','段階2','段階3'],
+      datasets:[{data:tc,backgroundColor:['rgba(184,48,48,.7)','rgba(89,156,231,.5)','rgba(89,156,231,.75)','rgba(31,138,101,.75)'],borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:11}},position:'bottom'},
+      tooltip:{callbacks:{label:function(c){return c.label+': '+c.raw+'社';}}}}}});
+
+  _gyoAgFilter='all'; _gyoCatFilter='all'; _gyoSortKey=null; _gyoSortAsc=true;
+  gyoRenderTable();
+
+  const top15 = [...GYOSEKI_AG].filter(a=>a.inc>0).sort((a,b)=>b.inc-a.inc).slice(0,15);
+  if(_gyoCharts.agBar) _gyoCharts.agBar.destroy();
+  _gyoCharts.agBar = new Chart(document.getElementById('gyo-agBar').getContext('2d'), {
+    type:'bar',
+    data:{labels:top15.map(a=>a.name), datasets:[{data:top15.map(a=>Math.round(a.inc/1e4)),
+      backgroundColor:top15.map(a=>a.stage==='段階3'?'rgba(31,138,101,.75)':'rgba(89,156,231,.65)'),borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#222'},ticks:{color:'#666',font:{size:10},callback:function(v){return v+'万';}}},
+              y:{grid:{color:'#222'},ticks:{color:'#ddd',font:{size:10}}}}}});
+}
+
+let _gyoAgFilter='all', _gyoCatFilter='all', _gyoSortKey=null, _gyoSortAsc=true;
+function gyoRenderTable(){
+  let d = [...GYOSEKI_AG];
+  if(_gyoAgFilter==='miss') d=d.filter(a=>a.stage==='未達');
+  else if(_gyoAgFilter==='top') d=d.filter(a=>a.stage==='段階3');
+  if(_gyoCatFilter!=='all') d=d.filter(a=>a.cat===_gyoCatFilter);
+  if(_gyoSortKey){ d.sort((a,b)=>_gyoSortAsc?a[_gyoSortKey]-b[_gyoSortKey]:b[_gyoSortKey]-a[_gyoSortKey]); }
+  const danger = function(a){ return a.stage==='未達'&&a.ytoy<100; };
+  document.getElementById('gyo-tbody').innerHTML = d.map(function(a){
+    const rc = danger(a)?'rr': a.stage==='未達'?'ry':'';
+    return '<tr class="'+rc+'">' +
+      '<td><b>'+a.name+'</b></td>' +
+      '<td><span class="pill pgr">'+a.cat+'</span></td>' +
+      '<td style="text-align:right;color:'+(a.lr>=100?'var(--green-text)':'var(--red-text)')+';font-weight:600">'+pct(a.lr)+'</td>' +
+      '<td>'+stagePill(a.stage)+'</td>' +
+      '<td class="dim">'+a.rl+'</td>' +
+      '<td style="text-align:right">'+(a.inc>0?'<b>'+jpy(a.inc)+'</b>':'<span class="pill pr">なし</span>')+'</td>' +
+      '<td style="text-align:right;color:'+(a.ytoy<100?'var(--red-text)':a.ytoy>120?'var(--green-text)':'inherit')+'">'+pct(a.ytoy)+'</td>' +
+      '<td style="text-align:right;color:'+(a.qtoq<90?'var(--red-text)':'inherit')+'">'+pct(a.qtoq)+'</td>' +
+    '</tr>';
+  }).join('');
+}
+function gyoFilter(f,btn){ _gyoAgFilter=f; document.querySelectorAll('#panel-gyoseki_mc .fbar .fbtn').forEach(function(b,i){if(i<3)b.classList.toggle('active',b===btn);}); gyoRenderTable(); }
+function gyoCat(c,btn){ _gyoCatFilter=c; document.querySelectorAll('#panel-gyoseki_mc .fbar .fbtn').forEach(function(b,i){if(i>=3)b.classList.toggle('active',b===btn);}); gyoRenderTable(); }
+function gyoSort(k){ _gyoSortKey=k; _gyoSortAsc=!_gyoSortAsc; gyoRenderTable(); }
+
+// ═══════════════════════════════════════════════════════════
+// TAB: 個社インセン（MC）
+// ═══════════════════════════════════════════════════════════
+let _sppCharts={};
+function buildKojinMC(){
+  const cat = CATEGORIES.find(c => c.id === 'kojin_mc');
+  const t = catTotal(cat);
+  const el = document.getElementById('panel-kojin_mc');
+
+  const spAg = SPP_AG.filter(a=>a.type==='SP');
+  const ppAg = SPP_AG.filter(a=>a.type==='PP');
+  const spTc = tierCounts(spAg), ppTc = tierCounts(ppAg);
+
+  const itemCards = cat.items.map(function(item){
+    const r2 = ratio(item.estimate, item.budget);
+    const fc2 = barColor(r2);
+    const fill2 = r2!==null?Math.min(r2*100,100):0;
+    let detail = '';
+    if(item.hasAgency){
+      detail = '<div class="charts-2" style="margin-top:10px">' +
+        '<div class="cc"><h3>SP 達成Bar分布（7社）</h3><canvas id="spp-spTier" height="130"></canvas></div>' +
+        '<div class="cc"><h3>PP 達成Bar分布（15社）</h3><canvas id="spp-ppTier" height="130"></canvas></div>' +
+        '</div>' +
+        '<div class="ag-tbl-wrap"><table class="ag">' +
+          '<thead><tr><th>代理店名</th><th>Cat</th><th>SP/PP</th><th>目標比</th><th>達成Bar</th><th>率</th><th>支給見立て</th></tr></thead>' +
+          '<tbody>' +
+            SPP_AG.map(function(a){
+              return '<tr class="'+(a.stage==='未達'?'ry':'')+'">' +
+                '<td><b>'+a.name+'</b></td>' +
+                '<td><span class="pill pgr">'+a.cat+'</span></td>' +
+                '<td><span class="pill '+(a.type==='SP'?'pb':'pgr')+'">'+a.type+'</span></td>' +
+                '<td style="text-align:right;color:'+(a.lr>=100?'var(--green-text)':'var(--red-text)')+';font-weight:600">'+pct(a.lr)+'</td>' +
+                '<td>'+stagePill(a.stage)+'</td>' +
+                '<td class="dim">'+a.rl+'</td>' +
+                '<td style="text-align:right">'+(a.inc>0?'<b>'+jpy(a.inc)+'</b>':'<span class="pill pr">なし</span>')+'</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table></div>';
+    }
+    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">' +
+        '<span style="font-weight:600;font-size:12px">'+item.name+'</span>' +
+        '<span class="pill '+hcls(r2)+'">'+hlbl(r2)+'</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">' +
+        '<div class="sub">予算<br><b style="font-size:13px;color:var(--text)">'+jpy(item.budget)+'</b></div>' +
+        '<div class="sub">見立て<br><b style="font-size:13px;color:var(--'+(r2!==null?hclr(r2)+'-text':'text2')+')">'+jpy(item.estimate)+'</b></div>' +
+        '<div class="sub">予算比<br><b style="font-size:13px;color:var(--'+(r2!==null?hclr(r2)+'-text':'text2')+')">'+pct(r2!==null?r2*100:null)+'</b></div>' +
+        '<div class="sub">ソース<br><b style="font-size:11px;color:var(--text2)">'+item.source+'</b></div>' +
+      '</div>' +
+      '<div class="bar-bg" style="height:6px">' +
+        '<div class="bar-fill" style="width:'+fill2+'%;background:'+fc2+'"></div>' +
+      '</div>' +
+      '<div class="sub" style="margin-top:4px">'+item.note+'</div>' +
+      detail +
+    '</div>';
+  }).join('');
+
+  el.innerHTML = '<div id="kojin-hcard"></div>' + itemCards;
+  renderHCard(cat.nameShort, t.budget, t.estimate, 'PO管理', document.getElementById('kojin-hcard'));
+
+  if(_sppCharts.sp) _sppCharts.sp.destroy();
+  if(_sppCharts.pp) _sppCharts.pp.destroy();
+  const mk = function(id,data){
+    const ctx = document.getElementById(id);
+    if(!ctx) return;
+    return new Chart(ctx.getContext('2d'),{type:'doughnut',data:{
+      labels:['未達','段階1','段階2','段階3'],
+      datasets:[{data:data,backgroundColor:['rgba(184,48,48,.7)','rgba(89,156,231,.5)','rgba(89,156,231,.75)','rgba(31,138,101,.75)'],borderWidth:0}]},
+      options:{responsive:true,plugins:{legend:{labels:{color:'#aaa',font:{size:11}},position:'bottom'},
+        tooltip:{callbacks:{label:function(c){return c.label+': '+c.raw+'社';}}}}}});
+  };
+  _sppCharts.sp = mk('spp-spTier', spTc);
+  _sppCharts.pp = mk('spp-ppTier', ppTc);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: 業績インセン（NG）
+// ═══════════════════════════════════════════════════════════
+function buildGyosekiNG(){
+  const cat = CATEGORIES.find(c => c.id === 'gyoseki_ng');
+  const t = catTotal(cat);
+  const el = document.getElementById('panel-gyoseki_ng');
+
+  const itemCards = cat.items.map(function(item){
+    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<span style="font-weight:600;font-size:12px">'+item.name+'</span>' +
+        '<span class="pill pgr">見立て未取得</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px">' +
+        '<div class="sub">Q1予算<br><b style="font-size:14px;color:var(--text)">'+jpy(item.budget)+'</b></div>' +
+        '<div class="sub">見立て<br><b style="font-size:14px;color:var(--text2)">—（要確認）</b></div>' +
+      '</div>' +
+      '<div class="sub">'+item.note+'</div>' +
+      '<div class="sub" style="margin-top:4px;color:var(--text3)">データソース: '+item.source+'</div>' +
+    '</div>';
+  }).join('');
+
+  el.innerHTML =
+    '<div id="ng-hcard"></div>' +
+    '<div class="callout cw">GIB・従量のQ1見立てはIS&Cインセンモニタリングシートを参照。現時点では取得未済。</div>' +
+    itemCards;
+
+  const rng = document.createElement('div');
+  rng.innerHTML =
+    '<div class="hcard">' +
+      '<div class="hrow"><span style="font-weight:600;font-size:12px">' + cat.nameShort + '</span><span class="pill pgr">見立て未取得</span>' +
+      '<span class="dim" style="font-size:11px;margin-left:auto">NG管理</span></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px">' +
+        '<div><div class="sub">Q1予算</div><div style="font-size:16px;font-weight:600">' + jpy(t.budget) + '</div></div>' +
+        '<div><div class="sub">Q1見立て</div><div style="font-size:16px;font-weight:600;color:var(--text2)">—</div></div>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('ng-hcard').replaceWith(rng.firstChild);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIMPLE TAB BUILDER (支援金, BNP, WB)
+// ═══════════════════════════════════════════════════════════
+function buildSimpleCat(catId){
+  const cat = CATEGORIES.find(c => c.id === catId);
+  const t = catTotal(cat);
+  const el = document.getElementById('panel-' + catId);
+
+  const itemRows = cat.items.map(function(item){
+    const r2 = ratio(item.estimate, item.budget);
+    return '<tr>' +
+      '<td style="font-weight:500">'+item.name+'</td>' +
+      '<td style="text-align:right">'+jpy(item.budget)+'</td>' +
+      '<td style="text-align:right;color:var(--green-text);font-weight:600">'+jpy(item.estimate)+'</td>' +
+      '<td><span class="pill '+hcls(r2)+'">'+hlbl(r2)+'</span></td>' +
+      '<td class="dim">'+item.note+'</td>' +
+      '<td class="dim" style="font-size:10px">'+item.source+'</td>' +
+    '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    '<div id="'+catId+'-hcard"></div>' +
+    '<div class="tbl-wrap"><table class="items-table">' +
+      '<thead><tr><th>項目</th><th>予算</th><th>見立て</th><th>状態</th><th>概要</th><th>ソース</th></tr></thead>' +
+      '<tbody>' + itemRows + '</tbody>' +
+    '</table></div>';
+
+  renderHCard(cat.nameShort, t.budget, t.estimate, cat.team+'管理', document.getElementById(catId+'-hcard'));
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════
+const TAB_DEFS = [
+  { id:'summary',      label:'📊 全体サマリー', build:buildSummary },
+  { id:'gyoseki_mc',   label:'業績インセン（MC）', build:buildGyosekiMC },
+  { id:'kojin_mc',     label:'個社インセン（MC）', build:buildKojinMC },
+  { id:'gyoseki_ng',   label:'業績インセン（NG）', build:buildGyosekiNG },
+  { id:'shien',        label:'支援金', build:function(){ buildSimpleCat('shien'); } },
+  { id:'bnp',          label:'BNP',  build:function(){ buildSimpleCat('bnp'); } },
+  { id:'wb',           label:'WB',   build:function(){ buildSimpleCat('wb'); } },
+];
+const _built = new Set();
+
+function switchCat(id){
+  TAB_DEFS.forEach(function(t){
+    const el = document.getElementById('panel-'+t.id);
+    if(el) el.style.display = t.id===id ? '' : 'none';
+  });
+  document.querySelectorAll('.mtab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.id===id);
+  });
+  if(!_built.has(id)){
+    _built.add(id);
+    TAB_DEFS.find(function(t){ return t.id===id; }).build();
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// Build tab bar
+document.getElementById('catTabs').innerHTML = TAB_DEFS.map(function(t,i){
+  return '<button class="mtab'+(i===0?' summary-tab':'')+'" data-id="'+t.id+'" onclick="switchCat(\''+t.id+'\')">'+t.label+'</button>';
+}).join('');
+
+// Init
+switchCat('summary');
+</script>
+</body>
+</html>
